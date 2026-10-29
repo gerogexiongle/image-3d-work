@@ -14,10 +14,12 @@ const downloadsEl = $("downloads");
 const downloadEl = $("download");
 const downloadCoarseEl = $("download-coarse");
 const downloadRefinedEl = $("download-refined");
+const reloadPreviewBtn = $("reload-preview");
 const runBtn = $("run-btn");
 const exampleBtn = $("example-btn");
 const backendSelect = $("coarse-backend");
 const backendHint = $("backend-hint");
+let lastPreviewUrl = "";
 
 let exampleImageBlob = null;
 let useExampleImage = false;
@@ -155,50 +157,67 @@ function fitCamera(object) {
   controls.update();
 }
 
+function _pickMap(mat) {
+  if (!mat) return null;
+  return mat.map || mat.emissiveMap || mat.normalMap || null;
+}
+
+function _applyPreviewMaterial(obj) {
+  const srcMats = Array.isArray(obj.material) ? obj.material : [obj.material];
+  const maps = srcMats.map(_pickMap).filter(Boolean);
+  const hasUv = obj.geometry?.attributes?.uv != null;
+  const hasVertexColors = obj.geometry?.attributes?.color != null;
+
+  if (maps.length || (hasUv && srcMats.some((m) => m && m.isMeshStandardMaterial))) {
+    const next = srcMats.map((m, i) => {
+      const map = maps[i] || _pickMap(m) || maps[0] || null;
+      if (map) {
+        map.colorSpace = THREE.SRGBColorSpace;
+        map.flipY = false;
+        map.needsUpdate = true;
+      }
+      // Rebuild a simple lit material so texture always shows
+      // (avoids glTF default metalness=1 looking black/grey).
+      return new THREE.MeshStandardMaterial({
+        map,
+        color: 0xffffff,
+        metalness: 0.0,
+        roughness: 0.85,
+        vertexColors: false,
+        side: THREE.DoubleSide,
+      });
+    });
+    obj.material = next.length === 1 ? next[0] : next;
+    obj.material.needsUpdate = true;
+    return true;
+  }
+
+  obj.material = new THREE.MeshStandardMaterial({
+    color: hasVertexColors ? 0xffffff : 0xc5d8cc,
+    metalness: 0.05,
+    roughness: 0.55,
+    vertexColors: hasVertexColors,
+    side: THREE.DoubleSide,
+  });
+  return false;
+}
+
 function loadGlbUrl(url) {
   clearModel();
+  // bust HTTP cache for repeated job downloads
+  const sep = url.includes("?") ? "&" : "?";
+  const fetchUrl = `${url}${sep}t=${Date.now()}`;
   setStatus("下载并解析 GLB 预览…", "running");
   let lastPct = -1;
   return new Promise((resolve, reject) => {
     loader.load(
-      url,
+      fetchUrl,
       (gltf) => {
         currentRoot = gltf.scene;
         let hasTexture = false;
         currentRoot.traverse((obj) => {
           if (!obj.isMesh) return;
-          const mats = Array.isArray(obj.material)
-            ? obj.material
-            : [obj.material];
-          const mapped = mats.some(
-            (m) => m && (m.map || m.emissiveMap || m.normalMap)
-          );
-          if (mapped) {
-            hasTexture = true;
-            mats.forEach((m) => {
-              if (!m) return;
-              // Hunyuan Paint GLB often omits metallicFactor → glTF default 1
-              // makes the mesh look black / "empty" in the viewer.
-              m.metalness = 0.05;
-              if (m.roughness == null || m.roughness < 0.2) m.roughness = 0.7;
-              m.side = THREE.DoubleSide;
-              if (m.map) {
-                m.map.colorSpace = THREE.SRGBColorSpace;
-                m.map.needsUpdate = true;
-              }
-              m.needsUpdate = true;
-            });
-            return;
-          }
-          const hasVertexColors =
-            obj.geometry?.attributes?.color != null;
-          obj.material = new THREE.MeshStandardMaterial({
-            color: hasVertexColors ? 0xffffff : 0xc5d8cc,
-            metalness: 0.05,
-            roughness: 0.55,
-            vertexColors: hasVertexColors,
-            side: THREE.DoubleSide,
-          });
+          if (_applyPreviewMaterial(obj)) hasTexture = true;
         });
         scene.add(currentRoot);
         fitCamera(currentRoot);
@@ -308,6 +327,7 @@ runBtn.addEventListener("click", async () => {
     const job = await pollJob(job_id);
 
     const url = job.output || `/api/jobs/${job_id}/download`;
+    lastPreviewUrl = url;
     downloadEl.href = url;
     downloadEl.download = job.textured
       ? `hi3d_textured_${job_id}.glb`
@@ -327,6 +347,7 @@ runBtn.addEventListener("click", async () => {
     } else {
       downloadCoarseEl.hidden = true;
     }
+    if (reloadPreviewBtn) reloadPreviewBtn.hidden = false;
     downloadsEl.hidden = false;
 
     if (job.stats) {
@@ -372,6 +393,17 @@ runBtn.addEventListener("click", async () => {
     exampleBtn.disabled = false;
   }
 });
+
+if (reloadPreviewBtn) {
+  reloadPreviewBtn.addEventListener("click", () => {
+    const url = lastPreviewUrl || downloadEl.href;
+    if (!url) {
+      setStatus("没有可预览的结果", "error");
+      return;
+    }
+    loadGlbUrl(url).catch((e) => setStatus(String(e.message || e), "error"));
+  });
+}
 
 loadBackends().catch((e) => {
   backendHint.textContent = "后端列表加载失败: " + (e.message || e);

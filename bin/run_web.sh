@@ -72,7 +72,7 @@ status_web() {
   if is_healthy; then
     curl -sS "http://127.0.0.1:${HI3D_PORT}/api/health"
     echo
-    echo "URL: http://10.0.3.253:${HI3D_PORT}"
+    echo "URL: http://<host>:${HI3D_PORT}"
   else
     echo "health check failed"
     return 1
@@ -93,7 +93,7 @@ existing="$(port_pids)"
 if [[ -n "${existing}" ]]; then
   if is_healthy; then
     echo "Hi3D web already running (pid=${existing}) on :${HI3D_PORT}"
-    echo "URL: http://10.0.3.253:${HI3D_PORT}"
+    echo "URL: http://<host>:${HI3D_PORT}"
     echo "Use: $0 --restart   # 重启"
     echo "     $0 --stop      # 停止"
     echo "     $0 --status    # 状态"
