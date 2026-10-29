@@ -1,0 +1,41 @@
+# Runtime / local env (do not publish)
+env/
+hf_cache/
+models/
+outputs/
+wheels/
+micromamba.tar.bz2
+bin/micromamba
+
+# Job artifacts & logs
+web/jobs/
+web/logs/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build / editor
+build/
+dist/
+*.egg
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Nested upstream git metadata (vendored under tools/)
+**/.git.upstream/
+**/.git/
+
+# Large compiled CUDA objects can be rebuilt; keep source only if huge
+# (keep the shipped .so for L20D convenience — comment out to force rebuild)
+# tools/**/custom_rasterizer/*.so
+tools/**/custom_rasterizer/build/
+
+# Temp / smoke
+*.log
+/tmp/

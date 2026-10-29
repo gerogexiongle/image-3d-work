@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hi3D · 图生 3D</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <p class="brand">Hi3D</p>
+      <h1>图生 3D 工作台</h1>
+      <p class="lede">上传参考图：粗模几何 → Hi3D 精修 → Hunyuan Paint 贴图；粗模/精修本身无颜色。</p>
+    </header>
+
+    <main class="layout">
+      <section class="panel controls">
+        <div class="field">
+          <label>参考图像</label>
+          <input id="image" type="file" accept="image/*" />
+          <img id="image-preview" class="thumb" alt="" hidden />
+        </div>
+
+        <div class="field">
+          <label>粗模后端（对照用）</label>
+          <select id="coarse-backend"></select>
+          <p id="backend-hint" class="hint">加载后端列表…</p>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>精修分辨率</label>
+            <select id="resolution">
+              <option value="512" selected>512（推荐试用）</option>
+              <option value="1024">1024</option>
+              <option value="1536">1536</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>步数</label>
+            <input id="steps" type="number" min="1" max="100" value="25" />
+          </div>
+          <div class="field">
+            <label>Seed</label>
+            <input id="seed" type="number" value="0" />
+          </div>
+        </div>
+
+        <label class="check">
+          <input id="remove-bg" type="checkbox" checked />
+          自动抠图（推荐）
+        </label>
+        <label class="check">
+          <input id="remove-slabs" type="checkbox" checked />
+          粗模剔大平面伪影（推荐 Hunyuan）
+        </label>
+        <label class="check">
+          <input id="apply-texture" type="checkbox" checked />
+          生成贴图 Hunyuan Paint（否则仅白模几何）
+        </label>
+        <p class="hint">粗模 / Hi3D 精修只有几何；勾选贴图后才会按原图上色，耗时会明显增加。</p>
+
+        <details class="advanced">
+          <summary>高级：自带粗网格精修</summary>
+          <div class="field">
+            <label>粗网格（可选，提供则跳过 TripoSR）</label>
+            <input id="mesh" type="file" accept=".glb,.gltf,.obj,.ply,.stl" />
+            <p id="mesh-name" class="hint"></p>
+          </div>
+        </details>
+
+        <div class="actions">
+          <button id="example-btn" type="button" class="ghost">加载示例图</button>
+          <button id="run-btn" type="button" class="primary">生成 3D</button>
+        </div>
+        <p id="status" class="status">就绪</p>
+        <div id="stats" class="stats" hidden></div>
+        <div class="downloads" id="downloads" hidden>
+          <a id="download" class="download">下载结果 GLB</a>
+          <a id="download-refined" class="download ghost-link" hidden>下载几何精修</a>
+          <a id="download-coarse" class="download ghost-link">下载粗模</a>
+        </div>
+      </section>
+
+      <section class="panel viewer-wrap">
+        <div class="viewer-label">3D 结果预览</div>
+        <div id="viewer"></div>
+        <p class="viewer-hint">拖拽旋转 · 滚轮缩放 · 流程：抠图 → 粗模 → Hi3D 精修（几何）→ Hunyuan Paint 贴图</p>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>
